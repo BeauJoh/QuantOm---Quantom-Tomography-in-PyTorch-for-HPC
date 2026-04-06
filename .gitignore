@@ -1,0 +1,8 @@
+results
+memory_footprints.csv
+*.swp
+pixi.lock
+*.so
+sycl/sycl-implementations
+__pycache__
+results_loits_performance_scans
