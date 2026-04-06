@@ -1,140 +1,178 @@
 # QuantOm: Performance vs Productivity in HPC
 
-This repository accompanies the paper:
+This repository contains the artifact accompanying the paper:
 
-**"On the Efficacy of PyTorch for High-Performance Computing:  
-A Case Study in Computational Physics"**
+**"On the Efficacy of PyTorch for High-Performance Computing: A Case Study in Computational Physics"**
 
 It provides:
-- Implementations of the LOITS sampler in:
-  - PyTorch
-  - C++
-  - OpenMP
-  - SYCL (AdaptiveCpp, DPC++)
-- Scripts to reproduce all experiments and figures
-- Precomputed results used in the paper (for fast reproduction)
+- implementations of the LOITS algorithm in PyTorch, C++, OpenMP, and SYCL
+- scripts to reproduce all figures from the paper
+- infrastructure to rerun experiments on new systems
 
 ---
 
 # 🚀 Quick Start (Recommended)
 
-If you just want to reproduce the figures from the paper:
+To reproduce all figures from the paper:
 
 ```bash
-make plot
-```
-
-This uses **archived results** (included in the repository) and regenerates all figures.
-
-👉 This is the **default path for reviewers** — no compilation required.
-
----
-
-# ⚙️ Environment Setup
-
-We provide Conda/Mamba environments:
-
-```bash
-mamba create -f quantom.yaml
-mamba activate quantom
-```
-
-If dependency resolution fails:
-
-```bash
-mamba create -f quantom-no-build-info.yaml
-```
-
-> **Note:** `mamba` and `conda` are interchangeable, but `mamba` is faster.
-
----
-
-# 🧪 Running Experiments
-
-## 1. Install Backends (SYCL / LLVM / etc.)
-
-```bash
-make install
-```
-
-This installs:
-- LLVM toolchains
-- DPC++
-- AdaptiveCpp
-- UniSYCL (optional)
-- IRIS runtime
-
-All installs are host-specific and placed in:
-
-```
-sycl-implementations/<hostname>/
-```
-
----
-
-## 2. Run Experiments (⚠️ Expensive)
-
-```bash
-make run
+make
 ```
 
 This will:
-- compile all implementations
-- run CPU + GPU experiments
-- overwrite `results/*.csv`
+- copy `archived-results/` → `results/` (if needed)
+- regenerate all figures into `images/`
+
+⚠️ This does **NOT** rerun experiments. It uses archived data shipped with the artifact.
 
 ---
 
-## 3. Plot Results
+# ⚙️ Environment Setup (pixi)
+
+This project uses **pixi** for environment management.
+
+## Install pixi
 
 ```bash
-make plot
+curl -fsSL https://pixi.sh/install.sh | bash
 ```
 
-This generates:
-- CPU scaling plots
-- GPU scaling plots
-- Strong/weak scaling figures
+## Create and activate environment
+
+```bash
+pixi install
+pixi shell
+```
+
+This will:
+- create the environment defined in `pixi.toml`
+- install all required dependencies
+- ensure consistent versions across systems
 
 ---
 
-# 📦 Results Management
+# Reproducing Figures
 
-We separate **paper results** from **new runs**:
+Generated figures are written to:
 
 ```
-results/
-├── archived/     # results used in the paper (DO NOT MODIFY)
-├── latest/       # results from your runs
+images/
 ```
 
-### Default behavior
-- `make plot` → uses `archived/`
-- `make run` → writes to `latest/`
+These correspond to:
 
-### To replot new results:
-
-```bash
-make plot RESULTS=latest
-```
+- `strong_scaling.png`
+- `weak_scaling.png`
+- `cpu_scaling.png`
+- `gpu_scaling.png`
+- `stacked_barplot_cpu.pdf`
+- `stacked_barplot_gpu.pdf`
 
 ---
 
-# 🔁 Reproducing Paper Results
+# Running Experiments (Optional)
 
-To fully reproduce:
+To collect fresh results on your system:
 
 ```bash
-make install
-make run        # may take hours depending on hardware
-make plot RESULTS=latest
+make rerun-strong
+make rerun-weak
+make rerun-frs
 ```
 
-Then compare:
+⚠️ These runs are computationally expensive and may take significant time depending on hardware.
+
+---
+
+# Results Layout
+
+The artifact separates **archived paper results** from **working results**:
 
 ```
-results/archived/ vs results/latest/
+archived-results/   # results used in the paper (read-only)
+results/            # working directory for regenerated or new results
 ```
+
+Behavior:
+- `make` → uses `results/` (bootstrapped from `archived-results/` if needed)
+- `make rerun-*` → overwrites data inside `results/`
+
+This ensures:
+- paper results remain untouched
+- new experiments do not clobber original data
+
+---
+
+# Build System
+
+Wrappers are built automatically when needed, but can be built manually:
+
+```bash
+make build
+```
+
+This compiles:
+- `cpp/`   → C++ backend
+- `omp/`   → OpenMP backend
+- `sycl/`  → SYCL backends (AdaptiveCpp, DPC++)
+
+---
+
+# Backends
+
+Available backends are detected via:
+
+```bash
+./setup-backends.sh
+```
+
+Typical configurations include:
+- CPU (OpenMP, TBB)
+- CUDA
+- HIP
+- Level Zero (XPU)
+
+---
+
+# Notes on DPC++ CPU (TBB)
+
+On some systems, the DPC++ CPU backend requires the runtime library path to be visible.
+
+This is handled automatically in the provided scripts, but if issues occur, ensure:
+
+```
+<repo>/sycl/sycl-implementations/<host>/dpc++-cpu/lib
+```
+
+is present in `LD_LIBRARY_PATH`.
+
+---
+
+# Notebook (Optional)
+
+A companion Jupyter notebook (`artifact_walkthrough.ipynb`) is provided to:
+
+- visualise generated figures
+- demonstrate the workflow interactively
+
+If using Jupyter:
+
+```bash
+pixi run python -m pip install "notebook<7"
+pixi run jupyter notebook
+```
+
+(BeakerX is not required.)
+
+---
+
+# Cleaning
+
+```bash
+make clean
+```
+
+Removes compiled artifacts.
 
 ---
 
@@ -175,11 +213,11 @@ These results arise from:
 ├── omp/                 # OpenMP implementation
 ├── sycl/                # SYCL implementations + installer
 ├── examples/            # Jupyter notebooks
-├── results/
-│   ├── archived/        # paper results
-│   └── latest/          # new runs
+├── archived-results/    # paper results
+├── results/             # working results
+├── images/              # generated figures
 ├── utils/               # plotting scripts
-├── setup_backends.sh    # environment configuration
+├── setup-backends.sh    # environment configuration
 ├── utils.sh             # logging helpers
 └── Makefile
 ```
@@ -192,7 +230,7 @@ To explore LOITS interactively:
 
 ```bash
 cd examples/2d_loits
-jupyter-notebook
+pixi run jupyter notebook
 ```
 
 ---
@@ -245,9 +283,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
 
 ---
 
@@ -257,9 +293,8 @@ If you use this artifact, please cite:
 
 ```
 Beau Johnston, Niteya Shah, Wu-chun Feng.
-``On the Efficacy of PyTorch for High-Performance Computing:
-A Case Study in Computational Physics.''
+"On the Efficacy of PyTorch for High-Performance Computing:
+A Case Study in Computational Physics."
 Proceedings of the 23rd ACM International Conference on Computing Frontiers (CF 26')
 10.1145/3801487.3801838
 ```
-
