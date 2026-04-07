@@ -8,6 +8,7 @@ IMAGE_DIR="${IMAGE_DIR:-$SCRIPT_DIR/images}"
 
 mkdir -p "$IMAGE_DIR"
 
+PIXIRUN="$SCRIPT_DIR/setup-pixi.sh run"
 source "$SCRIPT_DIR/setup-backends.sh"
 source "$SCRIPT_DIR/utils.sh"
 setup_runtime_paths
@@ -53,7 +54,7 @@ run_results() {
     OMP_NUM_THREADS="$N_CORES" \
     MKL_NUM_THREADS="$N_CORES" \
     taskset -c 0-"$max_cpu_id" \
-      python3 ./pytorch_2dloits.py \
+      $PIXIRUN python3 ./pytorch_2dloits.py \
         --torch_device="cpu" \
         --pytorch_sampler \
         --disable_gradient_tracking \
@@ -64,7 +65,7 @@ run_results() {
     mv times.csv "$outdir/pytorch_${N_CORES}cores.csv"
 
     taskset -c 0-"$max_cpu_id" \
-      python3 ./pytorch_2dloits.py \
+      $PIXIRUN python3 ./pytorch_2dloits.py \
         --cpp_sampler \
         --disable_gradient_tracking \
         --threading=False \
@@ -75,7 +76,7 @@ run_results() {
 
     OMP_NUM_THREADS="$N_CORES" \
     taskset -c 0-"$max_cpu_id" \
-      python3 ./pytorch_2dloits.py \
+      $PIXIRUN python3 ./pytorch_2dloits.py \
         --omp_sampler \
         --disable_gradient_tracking \
         --threading=False \
@@ -87,7 +88,7 @@ run_results() {
     ACPP_VISIBILITY_MASK=omp \
     OMP_NUM_THREADS="$N_CORES" \
     taskset -c 0-"$max_cpu_id" \
-      python3 ./pytorch_2dloits.py \
+      $PIXIRUN python3 ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="acpp" \
         --disable_gradient_tracking \
@@ -99,7 +100,7 @@ run_results() {
 
     with_dpcpp_cpu_runtime \
     taskset -c 0-"$max_cpu_id" \
-      python3 ./pytorch_2dloits.py \
+      $PIXIRUN python3 ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="dpcp" \
         --disable_gradient_tracking \
@@ -133,7 +134,7 @@ plot_results() {
 }
 
 if [[ -n "${DORUN:-}" ]]; then
-  make -C "$SCRIPT_DIR/sycl" dpc++_for_tbb CXX=g++ CC=gcc
+  $PIXIRUN make -C "$SCRIPT_DIR/sycl" dpc++_for_tbb CXX=g++ CC=gcc
   run_results
 fi
 

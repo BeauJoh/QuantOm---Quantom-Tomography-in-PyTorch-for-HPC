@@ -1,5 +1,6 @@
 .PHONY: all plot plot-strong plot-weak plot-frs \
         install reinstall \
+        env env-pytorch env-check bootstrap bootstrap-all \
         build build-cpp build-omp build-sycl \
         build-sycl-acpp build-sycl-tbb build-sycl-cuda build-sycl-hip build-sycl-xpu \
         rerun rerun-strong rerun-weak rerun-frs \
@@ -12,6 +13,7 @@
         test-sycl-dpcpp-cuda test-sycl-dpcpp-hip test-sycl-usy
 
 SHELL := /usr/bin/env bash
+PIXI_RUN := ./setup-pixi.sh run
 
 # Default: regenerate figures from results/ only
 all: plot
@@ -32,6 +34,23 @@ plot-frs:
 	./plot_fixed_resource_and_stacked.sh
 
 # -------------------------
+# Pixi / Python environment
+# -------------------------
+
+env:
+	./setup-pixi.sh install
+
+env-pytorch: env
+	./setup-pytorch.sh
+
+env-check: env-pytorch
+	./setup-pixi.sh run python -c "import sys, torch; print(sys.executable); print(torch.__version__)"
+
+bootstrap: env-pytorch build
+
+bootstrap-all: env-pytorch build plot
+
+# -------------------------
 # Install toolchains / runtimes
 # -------------------------
 
@@ -50,35 +69,35 @@ reinstall:
 # - omp wrapper
 # - SYCL AdaptiveCpp wrapper
 # - SYCL DPC++ TBB wrapper
-build: build-cpp build-omp build-sycl
+build: env build-cpp build-omp build-sycl
 
 build-cpp:
-	$(MAKE) -C cpp CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C cpp CXX=g++ CC=gcc
 
 build-omp:
-	$(MAKE) -C omp CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C omp CXX=g++ CC=gcc
 
 build-sycl: build-sycl-acpp build-sycl-tbb
 
 build-sycl-acpp:
-	$(MAKE) -C sycl CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C sycl CXX=g++ CC=gcc
 
 build-sycl-tbb:
-	$(MAKE) -C sycl dpc++_for_tbb CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C sycl dpc++_for_tbb CXX=g++ CC=gcc
 
 build-sycl-cuda:
-	$(MAKE) -C sycl dpc++_for_cuda CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C sycl dpc++_for_cuda CXX=g++ CC=gcc
 
 build-sycl-hip:
-	$(MAKE) -C sycl dpc++_for_hip CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C sycl dpc++_for_hip CXX=g++ CC=gcc
 
 build-sycl-xpu:
-	$(MAKE) -C sycl dpc++_for_spirv CXX=g++ CC=gcc
+	$(PIXI_RUN) make -C sycl dpc++_for_spirv CXX=g++ CC=gcc
+
 # -------------------------
 # Backend detection helper
 # -------------------------
 
-# setup_backends.sh lives at repo root and exports BACKENDS for the current host.
 define get_backends
 source ./setup-backends.sh >/dev/null 2>&1 && printf '%s' "$$BACKENDS"
 endef
@@ -89,36 +108,33 @@ endef
 
 rerun: rerun-strong rerun-weak rerun-frs
 
-rerun-strong: build-cpp build-omp build-sycl-acpp build-sycl-tbb
-	$(MAKE) -C sycl activate_dpcpp_tbb CXX=g++ CC=gcc
+rerun-strong: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
 	DORUN=1 ./plot_strong_scaling.sh
 
-rerun-weak: build-cpp build-omp build-sycl-acpp build-sycl-tbb
-	$(MAKE) -C sycl activate_dpcpp_tbb CXX=g++ CC=gcc
+rerun-weak: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
 	DORUN=1 ./plot_weak_scaling.sh
 
-rerun-frs: build-cpp build-omp build-sycl-acpp build-sycl-tbb
-	$(MAKE) -C sycl activate_dpcpp_tbb CXX=g++ CC=gcc
+rerun-frs: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
 	DORUN=1 ./plot_fixed_resource_and_stacked.sh
 
 # Optional explicit per-backend entry points
-rerun-frs-cpu: build-cpp build-omp build-sycl-acpp build-sycl-tbb
+rerun-frs-cpu: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
 	DORUN=1 ./plot_fixed_resource_and_stacked.sh
 
-rerun-frs-cuda: build-cpp build-omp build-sycl-acpp build-sycl-tbb build-sycl-cuda
-	DORUN=1 ./plot_fixed_resource_and_stacked.sh
+rerun-frs-cuda: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
+	DORUN=1 FORCE_CUDA=1 ./plot_fixed_resource_and_stacked.sh
 
-rerun-frs-hip: build-cpp build-omp build-sycl-acpp build-sycl-tbb build-sycl-hip
-	DORUN=1 ./plot_fixed_resource_and_stacked.sh
+rerun-frs-hip: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
+	DORUN=1 FORCE_HIP=1 ./plot_fixed_resource_and_stacked.sh
 
-rerun-frs-xpu: build-cpp build-omp build-sycl-acpp build-sycl-tbb build-sycl-xpu
-	DORUN=1 ./plot_fixed_resource_and_stacked.sh
+rerun-frs-xpu: env-pytorch build-cpp build-omp build-sycl-acpp build-sycl-tbb
+	DORUN=1 FORCE_XPU=1 ./plot_fixed_resource_and_stacked.sh
 
 # -------------------------
 # Tests
 # -------------------------
 
-test: test-omp test-sycl
+test: env test-omp test-sycl
 
 test-cpp:
 	@echo "No explicit cpp test target defined."
@@ -126,36 +142,36 @@ test-cpp:
 test-omp: test-omp-basic
 
 test-omp-basic:
-	$(MAKE) -C omp omp_test
+	$(PIXI_RUN) make -C omp omp_test
 
 test-omp-instrument:
-	$(MAKE) -C omp omp_instrument
+	$(PIXI_RUN) make -C omp omp_instrument
 
 test-omp-flto:
-	$(MAKE) -C omp omp_test_flto
+	$(PIXI_RUN) make -C omp omp_test_flto
 
 test-omp-instrument-flto:
-	$(MAKE) -C omp omp_instrument_flto
+	$(PIXI_RUN) make -C omp omp_instrument_flto
 
 test-sycl: test-sycl-acpp test-sycl-dpcpp-cuda test-sycl-dpcpp-hip
 
 test-sycl-acpp:
-	$(MAKE) -C sycl sycl_test_acpp
+	$(PIXI_RUN) make -C sycl sycl_test_acpp
 
 test-sycl-acpp-omp:
-	$(MAKE) -C sycl sycl_test_acpp_omp
+	$(PIXI_RUN) make -C sycl sycl_test_acpp_omp
 
 test-sycl-acpp-cuda:
-	$(MAKE) -C sycl sycl_test_acpp_cud
+	$(PIXI_RUN) make -C sycl sycl_test_acpp_cud
 
 test-sycl-dpcpp-cuda:
-	$(MAKE) -C sycl sycl_test_dpcpp_cuda
+	$(PIXI_RUN) make -C sycl sycl_test_dpcpp_cuda
 
 test-sycl-dpcpp-hip:
-	$(MAKE) -C sycl sycl_test_dpcpp_hip
+	$(PIXI_RUN) make -C sycl sycl_test_dpcpp_hip
 
 test-sycl-usy:
-	$(MAKE) -C sycl sycl_test_usy
+	$(PIXI_RUN) make -C sycl sycl_test_usy
 
 # -------------------------
 # Legacy helper scripts
@@ -180,10 +196,10 @@ debug:
 clean: clean-cpp clean-omp clean-sycl
 
 clean-cpp:
-	$(MAKE) -C cpp clean
+	$(PIXI_RUN) make -C cpp clean
 
 clean-omp:
-	$(MAKE) -C omp clean
+	$(PIXI_RUN) make -C omp clean
 
 clean-sycl:
-	$(MAKE) -C sycl clean
+	$(PIXI_RUN) make -C sycl clean

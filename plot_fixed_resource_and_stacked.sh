@@ -8,6 +8,7 @@ IMAGE_DIR="${IMAGE_DIR:-$SCRIPT_DIR/images}"
 
 mkdir -p "$IMAGE_DIR"
 
+PIXIRUN="$SCRIPT_DIR/setup-pixi.sh run"
 source "$SCRIPT_DIR/setup-backends.sh"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SCRIPT_DIR/cpp:$SCRIPT_DIR/omp:$SCRIPT_DIR/sycl"
 source "$SCRIPT_DIR/utils.sh"
@@ -54,7 +55,7 @@ run_cpu_frs() {
     local N_GEN_EVENTS=$((10 ** i))
     echo "Running CPU fixed-resource scaling for ${N_GEN_EVENTS} events..."
 
-    python3 ./pytorch_2dloits.py \
+    $PIXIRUN python3 ./pytorch_2dloits.py \
       --torch_device="cpu" \
       --pytorch_sampler \
       --disable_gradient_tracking \
@@ -64,7 +65,7 @@ run_cpu_frs() {
       --n_trials="$N_TRIALS"
     mv times.csv "$outdir/pytorch-cpu_${N_GEN_EVENTS}.csv"
 
-    python3 ./pytorch_2dloits.py \
+    $PIXIRUN python3 ./pytorch_2dloits.py \
       --cpp_sampler \
       --disable_gradient_tracking \
       --threading=False \
@@ -73,7 +74,7 @@ run_cpu_frs() {
       --n_trials="$N_TRIALS"
     mv times.csv "$outdir/cpp_${N_GEN_EVENTS}.csv"
 
-    python3 ./pytorch_2dloits.py \
+    $PIXIRUN python3 ./pytorch_2dloits.py \
       --omp_sampler \
       --disable_gradient_tracking \
       --threading=False \
@@ -83,7 +84,7 @@ run_cpu_frs() {
     mv times.csv "$outdir/omp_${N_GEN_EVENTS}.csv"
 
     ACPP_VISIBILITY_MASK=omp \
-    python3 ./pytorch_2dloits.py \
+    $PIXIRUN python3 ./pytorch_2dloits.py \
       --sycl_sampler \
       --sycl_implementations="acpp" \
       --disable_gradient_tracking \
@@ -96,7 +97,7 @@ run_cpu_frs() {
     #export ONEAPI_DEVICE_SELECTOR='native_cpu:cpu'
     #export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./sycl/sycl-implementations/milan2/dpc++-cpu/lib
     with_dpcpp_cpu_runtime \
-      python3 ./pytorch_2dloits.py \
+      $PIXIRUN python3 ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="dpcp" \
         --disable_gradient_tracking \
@@ -349,25 +350,25 @@ plot_results() {
 
 if [[ -n "${DORUN:-}" ]]; then
   # CPU phase: make sure canonical DPC++ wrapper is the TBB one
-  make -C "$SCRIPT_DIR/sycl" dpc++_for_tbb CXX=g++ CC=gcc
+  $PIXIRUN make -C "$SCRIPT_DIR/sycl" dpc++_for_tbb CXX=g++ CC=gcc
   run_cpu_frs
   run_cpu_stacked
 
   if [[ "${BACKENDS:-}" == *"cuda"* ]]; then
     # CUDA phase: switch canonical DPC++ wrapper to CUDA
-    make -C "$SCRIPT_DIR/sycl" dpc++_for_cuda CXX=g++ CC=gcc
+    $PIXIRUN make -C "$SCRIPT_DIR/sycl" dpc++_for_cuda CXX=g++ CC=gcc
     run_cuda_frs
   fi
 
   if [[ "${BACKENDS:-}" == *"hip"* ]]; then
     # HIP phase: switch canonical DPC++ wrapper to HIP
-    make -C "$SCRIPT_DIR/sycl" dpc++_for_hip CXX=g++ CC=gcc
+    $PIXIRUN make -C "$SCRIPT_DIR/sycl" dpc++_for_hip CXX=g++ CC=gcc
     run_hip_frs
   fi
 
   if [[ "${BACKENDS:-}" == *"levelzero"* || "${BACKENDS:-}" == *"xpu"* ]]; then
     # XPU phase: switch canonical DPC++ wrapper to SPIR-V/XPU
-    make -C "$SCRIPT_DIR/sycl" dpc++_for_spirv CXX=g++ CC=gcc
+    $PIXIRUN make -C "$SCRIPT_DIR/sycl" dpc++_for_spirv CXX=g++ CC=gcc
     run_xpu_frs
   fi
 fi 

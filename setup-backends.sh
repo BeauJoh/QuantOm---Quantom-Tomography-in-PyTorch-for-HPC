@@ -130,7 +130,6 @@ case "$HOST" in
     export HIP_DEV_TARGET="gfx908"
     export ONEAPI_LIB_DEP="/opt/intel/oneapi/2025.2/lib"
     append_ld_library_path "/opt/rocm/llvm/lib"
-    load_module_if_needed "cmake/3.22.5"
     load_module_if_needed "gcc/13.2.0"
     load_module_if_needed "llvm/19.0.1_rc3_70_80_90-offload"
     ;;
@@ -281,3 +280,4 @@ export SOURCE_LLVM_LIB="$SOURCE_LLVM_INSTALL_ROOT/lib/libLLVM.so"
 export SOURCE_LLVM_CLANG="$SOURCE_LLVM_INSTALL_ROOT/bin/clang"
 export SOURCE_LLVM_CLANGXX="$SOURCE_LLVM_INSTALL_ROOT/bin/clang++"
 export SOURCE_LLVM_LD="$SOURCE_LLVM_INSTALL_ROOT/bin/ld.lld"
+
