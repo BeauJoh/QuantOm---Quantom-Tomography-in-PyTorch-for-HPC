@@ -6,7 +6,6 @@
         rerun rerun-strong rerun-weak rerun-frs \
         rerun-frs-cpu rerun-frs-cuda rerun-frs-hip rerun-frs-xpu \
         clean clean-cpp clean-omp clean-sycl \
-        smoke scaling profile debug \
         test test-cpp test-omp test-sycl \
         test-omp-basic test-omp-instrument test-omp-flto test-omp-instrument-flto \
         test-sycl-acpp test-sycl-acpp-omp test-sycl-acpp-cuda \
@@ -172,22 +171,6 @@ test-sycl-dpcpp-hip:
 
 test-sycl-usy:
 	$(PIXI_RUN) make -C sycl sycl_test_usy
-
-# -------------------------
-# Legacy helper scripts
-# -------------------------
-
-smoke:
-	./run.sh --smoke
-
-scaling:
-	./run_omp_thread_scaling.sh
-
-profile:
-	./profile_2dloits_performance.sh
-
-debug:
-	./debug.sh
 
 # -------------------------
 # Cleanup
