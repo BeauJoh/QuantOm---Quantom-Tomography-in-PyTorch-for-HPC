@@ -116,17 +116,21 @@ plot_results() {
     exit 1
   fi
 
-  export IMPLEMENTATION_SUBSTITUTIONS="SYCL-dpcp:SYCL DPC++ (TBB),SYCL-acpp:SYCL AdaptiveCpp (OpenMP),PyTorch:PyTorch (CPU)"
+  $PIXIRUN python "$SCRIPT_DIR/plotscripts/plot_ss.py" \
+    --results-root "$RESULTS_ROOT" \
+    --output "$IMAGE_DIR/strong_scaling.png"
 
-  TITLE="Strong Scaling of 10 million events" \
-  RESULT_PATH="$RESULT_GLOB" \
-  FIGURE_PATH="$IMAGE_DIR/strong_scaling.png" \
-  "$SCRIPT_DIR/utils/plot_strong_scaling.py" \
-    "PyTorch (CPU)" \
-    "C++" \
-    "OpenMP" \
-    "SYCL AdaptiveCpp (OpenMP)" \
-    "SYCL DPC++ (TBB)"
+  #export IMPLEMENTATION_SUBSTITUTIONS="SYCL-dpcp:SYCL DPC++ (TBB),SYCL-acpp:SYCL AdaptiveCpp (OpenMP),PyTorch:PyTorch (CPU)"
+
+  #TITLE="Strong Scaling of 10 million events" \
+  #RESULT_PATH="$RESULT_GLOB" \
+  #FIGURE_PATH="$IMAGE_DIR/strong_scaling.png" \
+  #"$SCRIPT_DIR/utils/plot_strong_scaling.py" \
+  #  "PyTorch (CPU)" \
+  #  "C++" \
+  #  "OpenMP" \
+  #  "SYCL AdaptiveCpp (OpenMP)" \
+  #  "SYCL DPC++ (TBB)"
 
   echo "Wrote $IMAGE_DIR/strong_scaling.png"
 }

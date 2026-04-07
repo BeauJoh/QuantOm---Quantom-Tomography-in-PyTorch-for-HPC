@@ -25,5 +25,7 @@ EOF
 echo "HOST=$HOST"
 echo "PIXI_HOME=$PIXI_HOME"
 echo "detached-environments=$DETACHED_ENVS_DIR"
+export PYTHONNOUSERSITE=1
+unset PYTHONPATH
 
 exec pixi "$@"

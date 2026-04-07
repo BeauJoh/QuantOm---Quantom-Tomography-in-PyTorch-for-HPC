@@ -118,17 +118,21 @@ plot_results() {
     exit 1
   fi
 
-  export IMPLEMENTATION_SUBSTITUTIONS="cpp:C++,omp:OpenMP,pytorch:PyTorch (CPU),dpcp-tbb:SYCL DPC++ (TBB),acpp-omp:SYCL AdaptiveCpp (OpenMP)"
+  $PIXIRUN python "$SCRIPT_DIR/plotscripts/plot_ws.py" \
+    --results-root "$RESULTS_ROOT" \
+    --output "$IMAGE_DIR/weak_scaling.png"
 
-  TITLE="Weak Scaling of 1 million events per core" \
-  RESULT_PATH="$RESULT_GLOB" \
-  FIGURE_PATH="$IMAGE_DIR/weak_scaling.png" \
-  ./utils/plot_weak_scaling.py \
-    "PyTorch (CPU)" \
-    "C++" \
-    "OpenMP" \
-    "SYCL AdaptiveCpp (OpenMP)" \
-    "SYCL DPC++ (TBB)"
+  #export IMPLEMENTATION_SUBSTITUTIONS="cpp:C++,omp:OpenMP,pytorch:PyTorch (CPU),dpcp-tbb:SYCL DPC++ (TBB),acpp-omp:SYCL AdaptiveCpp (OpenMP)"
+
+  #TITLE="Weak Scaling of 1 million events per core" \
+  #RESULT_PATH="$RESULT_GLOB" \
+  #FIGURE_PATH="$IMAGE_DIR/weak_scaling.png" \
+  #./utils/plot_weak_scaling.py \
+  #  "PyTorch (CPU)" \
+  #  "C++" \
+  #  "OpenMP" \
+  #  "SYCL AdaptiveCpp (OpenMP)" \
+  #  "SYCL DPC++ (TBB)"
 
   echo "Wrote $IMAGE_DIR/weak_scaling.png"
 }

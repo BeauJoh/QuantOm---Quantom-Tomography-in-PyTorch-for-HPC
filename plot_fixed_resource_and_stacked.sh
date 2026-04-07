@@ -280,63 +280,71 @@ plot_results() {
     exit 1
   fi
 
-  export IMPLEMENTATION_SUBSTITUTIONS="cpp:C++,omp:OpenMP,pytorch-cpu:PyTorch (CPU),dpcp-tbb:SYCL DPC++ (TBB),acpp-omp:SYCL AdaptiveCpp (OpenMP),dpcp-cuda:SYCL DPC++ (CUDA),acpp-cuda:SYCL AdaptiveCpp (CUDA),pytorch-cuda:PyTorch (CUDA),dpcp-hip:SYCL DPC++ (HIP),acpp-hip:SYCL AdaptiveCpp (HIP),pytorch-hip:PyTorch (HIP),dpcp-xpu:SYCL DPC++ (XPU),pytorch-xpu:PyTorch (XPU)"
+  $PIXIRUN python "$SCRIPT_DIR/plotscripts/plot_cpu.py" \
+    --results-root "$RESULTS_ROOT" \
+    --output "$IMAGE_DIR/cpu_scaling.png"
 
-  local all_frs_paths="$FRS_CPU_GLOB:$FRS_CUDA_GLOB:$FRS_XPU_GLOB:$FRS_HIP_GLOB"
+  $PIXIRUN python "$SCRIPT_DIR/plotscripts/plot_gpu.py" \
+    --results-root "$RESULTS_ROOT" \
+    --output "$IMAGE_DIR/gpu_scaling.png"
 
-  TITLE="Fixed-Resource Scaling" \
-  RESULT_PATH="$all_frs_paths" \
-  FIGURE_PATH="$IMAGE_DIR/cpu_scaling.png" \
-  ./utils/plot_frs_scaling.py \
-    "PyTorch (CPU)" \
-    "C++" \
-    "OpenMP" \
-    "SYCL AdaptiveCpp (OpenMP)" \
-    "SYCL DPC++ (TBB)"
+  #export IMPLEMENTATION_SUBSTITUTIONS="cpp:C++,omp:OpenMP,pytorch-cpu:PyTorch (CPU),dpcp-tbb:SYCL DPC++ (TBB),acpp-omp:SYCL AdaptiveCpp (OpenMP),dpcp-cuda:SYCL DPC++ (CUDA),acpp-cuda:SYCL AdaptiveCpp (CUDA),pytorch-cuda:PyTorch (CUDA),dpcp-hip:SYCL DPC++ (HIP),acpp-hip:SYCL AdaptiveCpp (HIP),pytorch-hip:PyTorch (HIP),dpcp-xpu:SYCL DPC++ (XPU),pytorch-xpu:PyTorch (XPU)"
 
-  TITLE="Fixed-Resource Scaling" \
-  RESULT_PATH="$all_frs_paths" \
-  FIGURE_PATH="$IMAGE_DIR/gpu_scaling.png" \
-  ./utils/plot_frs_scaling.py \
-    "PyTorch (CUDA)" \
-    "SYCL AdaptiveCpp (CUDA)" \
-    "SYCL DPC++ (CUDA)" \
-    "PyTorch (HIP)" \
-    "SYCL AdaptiveCpp (HIP)" \
-    "SYCL DPC++ (HIP)" \
-    "PyTorch (XPU)" \
-    "SYCL DPC++ (XPU)"
+  #local all_frs_paths="$FRS_CPU_GLOB:$FRS_CUDA_GLOB:$FRS_XPU_GLOB:$FRS_HIP_GLOB"
 
-  if compgen -G "$STACK_CPU_GLOB" > /dev/null; then
-    TITLE="Scaling and Breakdown of 2D-LOITS" \
-    RESULT_PATH="$STACK_CPU_GLOB" \
-    FIGURE_PATH="$IMAGE_DIR/stacked_barplot_cpu.pdf" \
-    SCALE_AXES=1 \
-    DROP_LEGEND=1 \
-    ./utils/plot_stacked_boxplots.py \
-      "PyTorch (CPU)" \
-      "SYCL AdaptiveCpp (OpenMP)" \
-      "SYCL DPC++ (TBB)" \
-      "C++" \
-      "OpenMP"
-  fi
+  #TITLE="Fixed-Resource Scaling" \
+  #RESULT_PATH="$all_frs_paths" \
+  #FIGURE_PATH="$IMAGE_DIR/cpu_scaling.png" \
+  #./utils/plot_frs_scaling.py \
+  #  "PyTorch (CPU)" \
+  #  "C++" \
+  #  "OpenMP" \
+  #  "SYCL AdaptiveCpp (OpenMP)" \
+  #  "SYCL DPC++ (TBB)"
 
-  if compgen -G "$STACK_GPU_GLOB" > /dev/null; then
-    TITLE="Scaling and Breakdown of 2D-LOITS" \
-    RESULT_PATH="$STACK_GPU_GLOB" \
-    FIGURE_PATH="$IMAGE_DIR/stacked_barplot_gpu.pdf" \
-    SCALE_AXES=1 \
-    DROP_Y_AX=1 \
-    ./utils/plot_stacked_boxplots.py \
-      "PyTorch (CUDA)" \
-      "PyTorch (HIP)" \
-      "PyTorch (XPU)" \
-      "SYCL AdaptiveCpp (CUDA)" \
-      "SYCL AdaptiveCpp (HIP)" \
-      "SYCL DPC++ (CUDA)" \
-      "SYCL DPC++ (HIP)" \
-      "SYCL DPC++ (XPU)"
-  fi
+  #TITLE="Fixed-Resource Scaling" \
+  #RESULT_PATH="$all_frs_paths" \
+  #FIGURE_PATH="$IMAGE_DIR/gpu_scaling.png" \
+  #./utils/plot_frs_scaling.py \
+  #  "PyTorch (CUDA)" \
+  #  "SYCL AdaptiveCpp (CUDA)" \
+  #  "SYCL DPC++ (CUDA)" \
+  #  "PyTorch (HIP)" \
+  #  "SYCL AdaptiveCpp (HIP)" \
+  #  "SYCL DPC++ (HIP)" \
+  #  "PyTorch (XPU)" \
+  #  "SYCL DPC++ (XPU)"
+
+  #if compgen -G "$STACK_CPU_GLOB" > /dev/null; then
+  #  TITLE="Scaling and Breakdown of 2D-LOITS" \
+  #  RESULT_PATH="$STACK_CPU_GLOB" \
+  #  FIGURE_PATH="$IMAGE_DIR/stacked_barplot_cpu.pdf" \
+  #  SCALE_AXES=1 \
+  #  DROP_LEGEND=1 \
+  #  ./utils/plot_stacked_boxplots.py \
+  #    "PyTorch (CPU)" \
+  #    "SYCL AdaptiveCpp (OpenMP)" \
+  #    "SYCL DPC++ (TBB)" \
+  #    "C++" \
+  #    "OpenMP"
+  #fi
+
+  #if compgen -G "$STACK_GPU_GLOB" > /dev/null; then
+  #  TITLE="Scaling and Breakdown of 2D-LOITS" \
+  #  RESULT_PATH="$STACK_GPU_GLOB" \
+  #  FIGURE_PATH="$IMAGE_DIR/stacked_barplot_gpu.pdf" \
+  #  SCALE_AXES=1 \
+  #  DROP_Y_AX=1 \
+  #  ./utils/plot_stacked_boxplots.py \
+  #    "PyTorch (CUDA)" \
+  #    "PyTorch (HIP)" \
+  #    "PyTorch (XPU)" \
+  #    "SYCL AdaptiveCpp (CUDA)" \
+  #    "SYCL AdaptiveCpp (HIP)" \
+  #    "SYCL DPC++ (CUDA)" \
+  #    "SYCL DPC++ (HIP)" \
+  #    "SYCL DPC++ (XPU)"
+  #fi
 
   echo "Wrote $IMAGE_DIR/cpu_scaling.png"
   echo "Wrote $IMAGE_DIR/gpu_scaling.png"
