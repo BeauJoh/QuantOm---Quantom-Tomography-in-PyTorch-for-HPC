@@ -6,3 +6,6 @@ pixi.lock
 sycl/sycl-implementations
 __pycache__
 results_loits_performance_scans
+.ipynb_checkpoints
+.pixi-local-*
+
