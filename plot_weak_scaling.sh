@@ -9,7 +9,9 @@ IMAGE_DIR="${IMAGE_DIR:-$SCRIPT_DIR/images}"
 mkdir -p "$IMAGE_DIR"
 
 PIXIRUN="$SCRIPT_DIR/setup-pixi.sh run"
+
 source "$SCRIPT_DIR/setup-backends.sh"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SCRIPT_DIR/cpp:$SCRIPT_DIR/omp:$SCRIPT_DIR/sycl"
 source "$SCRIPT_DIR/utils.sh"
 setup_runtime_paths
 
@@ -25,12 +27,6 @@ bootstrap_results_dir() {
 }
 
 bootstrap_results_dir
-
-with_dpcpp_cpu_runtime() {
-  ONEAPI_DEVICE_SELECTOR='native_cpu:cpu' \
-    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$DPCPPCPU_INSTALL_ROOT/lib" \
-    "$@"
-}
 
 RESULT_GLOB="$RESULTS_ROOT/ws_scaling_cpu_results/*.csv"
 
@@ -54,7 +50,7 @@ run_results() {
     OMP_NUM_THREADS="$N_CORES" \
     MKL_NUM_THREADS="$N_CORES" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --torch_device="cpu" \
         --pytorch_sampler \
         --disable_gradient_tracking \
@@ -65,7 +61,7 @@ run_results() {
     mv times.csv "$outdir/pytorch_${N_CORES}cores.csv"
 
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --cpp_sampler \
         --disable_gradient_tracking \
         --threading=False \
@@ -76,7 +72,7 @@ run_results() {
 
     OMP_NUM_THREADS="$N_CORES" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --omp_sampler \
         --disable_gradient_tracking \
         --threading=False \
@@ -88,7 +84,7 @@ run_results() {
     ACPP_VISIBILITY_MASK=omp \
     OMP_NUM_THREADS="$N_CORES" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="acpp" \
         --disable_gradient_tracking \
@@ -98,9 +94,10 @@ run_results() {
         --n_trials="$N_TRIALS"
     mv times.csv "$outdir/acpp-omp_${N_CORES}cores.csv"
 
-    with_dpcpp_cpu_runtime \
+    ONEAPI_DEVICE_SELECTOR='native_cpu:cpu' \
+    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$DPCPPCPU_INSTALL_ROOT/lib" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="dpcp" \
         --disable_gradient_tracking \
@@ -121,18 +118,6 @@ plot_results() {
   $PIXIRUN python "$SCRIPT_DIR/plotscripts/plot_ws.py" \
     --results-root "$RESULTS_ROOT" \
     --output "$IMAGE_DIR/weak_scaling.png"
-
-  #export IMPLEMENTATION_SUBSTITUTIONS="cpp:C++,omp:OpenMP,pytorch:PyTorch (CPU),dpcp-tbb:SYCL DPC++ (TBB),acpp-omp:SYCL AdaptiveCpp (OpenMP)"
-
-  #TITLE="Weak Scaling of 1 million events per core" \
-  #RESULT_PATH="$RESULT_GLOB" \
-  #FIGURE_PATH="$IMAGE_DIR/weak_scaling.png" \
-  #./utils/plot_weak_scaling.py \
-  #  "PyTorch (CPU)" \
-  #  "C++" \
-  #  "OpenMP" \
-  #  "SYCL AdaptiveCpp (OpenMP)" \
-  #  "SYCL DPC++ (TBB)"
 
   echo "Wrote $IMAGE_DIR/weak_scaling.png"
 }

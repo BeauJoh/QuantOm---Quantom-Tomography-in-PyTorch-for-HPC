@@ -58,7 +58,6 @@ def main() -> None:
         raise RuntimeError(f"No weak scaling CSV files found matching: {result_glob}")
 
     df = pd.DataFrame(rows)
-    print(df[["libdevice", "N", "nsamples", "st"]].sort_values(["libdevice", "N"]).to_string(index=False))
 
     expected_impls = {"pytorch", "cpp", "omp", "acpp-omp", "dpcp-tbb"}
     expected_cores = {1, 2, 4, 8, 16, 32, 64}

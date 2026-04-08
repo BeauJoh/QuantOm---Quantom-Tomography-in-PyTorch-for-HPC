@@ -9,7 +9,9 @@ IMAGE_DIR="${IMAGE_DIR:-$SCRIPT_DIR/images}"
 mkdir -p "$IMAGE_DIR"
 
 PIXIRUN="$SCRIPT_DIR/setup-pixi.sh run"
+
 source "$SCRIPT_DIR/setup-backends.sh"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$SCRIPT_DIR/cpp:$SCRIPT_DIR/omp:$SCRIPT_DIR/sycl"
 source "$SCRIPT_DIR/utils.sh"
 setup_runtime_paths
 
@@ -26,12 +28,6 @@ bootstrap_results_dir() {
 
 bootstrap_results_dir
 
-with_dpcpp_cpu_runtime() {
-  ONEAPI_DEVICE_SELECTOR='native_cpu:cpu' \
-    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$DPCPPCPU_INSTALL_ROOT/lib" \
-    "$@"
-}
-
 RESULT_GLOB="$RESULTS_ROOT/strong_scaling_results/*.csv"
 
 run_results() {
@@ -46,13 +42,15 @@ run_results() {
   cd "$SCRIPT_DIR"
 
   for i in $(seq 0 6); do
-    max_cpu_id=$((2 ** i - 1))
-    ncores=$((max_cpu_id + 1))
+    local max_cpu_id=$((2 ** i - 1))
+    local ncores=$((max_cpu_id + 1))
 
     echo "Running strong scaling at ${ncores} core(s)..."
 
+    OMP_NUM_THREADS="$ncores" \
+    MKL_NUM_THREADS="$ncores" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --torch_device="cpu" \
         --pytorch_sampler \
         --disable_gradient_tracking \
@@ -63,7 +61,7 @@ run_results() {
     mv times.csv "$outdir/pytorch_${ncores}.csv"
 
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --cpp_sampler \
         --disable_gradient_tracking \
         --threading=False \
@@ -74,7 +72,7 @@ run_results() {
 
     OMP_NUM_THREADS="$ncores" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --omp_sampler \
         --disable_gradient_tracking \
         --threading=False \
@@ -86,7 +84,7 @@ run_results() {
     ACPP_VISIBILITY_MASK=omp \
     OMP_NUM_THREADS="$ncores" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="acpp" \
         --disable_gradient_tracking \
@@ -96,9 +94,10 @@ run_results() {
         --n_trials="$N_TRIALS"
     mv times.csv "$outdir/acpp_omp_${ncores}.csv"
 
-    with_dpcpp_cpu_runtime \
+    ONEAPI_DEVICE_SELECTOR='native_cpu:cpu' \
+    LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$DPCPPCPU_INSTALL_ROOT/lib" \
     taskset -c 0-"$max_cpu_id" \
-      $PIXIRUN python3 ./pytorch_2dloits.py \
+      $PIXIRUN python ./pytorch_2dloits.py \
         --sycl_sampler \
         --sycl_implementations="dpcp" \
         --disable_gradient_tracking \
@@ -119,18 +118,6 @@ plot_results() {
   $PIXIRUN python "$SCRIPT_DIR/plotscripts/plot_ss.py" \
     --results-root "$RESULTS_ROOT" \
     --output "$IMAGE_DIR/strong_scaling.png"
-
-  #export IMPLEMENTATION_SUBSTITUTIONS="SYCL-dpcp:SYCL DPC++ (TBB),SYCL-acpp:SYCL AdaptiveCpp (OpenMP),PyTorch:PyTorch (CPU)"
-
-  #TITLE="Strong Scaling of 10 million events" \
-  #RESULT_PATH="$RESULT_GLOB" \
-  #FIGURE_PATH="$IMAGE_DIR/strong_scaling.png" \
-  #"$SCRIPT_DIR/utils/plot_strong_scaling.py" \
-  #  "PyTorch (CPU)" \
-  #  "C++" \
-  #  "OpenMP" \
-  #  "SYCL AdaptiveCpp (OpenMP)" \
-  #  "SYCL DPC++ (TBB)"
 
   echo "Wrote $IMAGE_DIR/strong_scaling.png"
 }

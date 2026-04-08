@@ -62,7 +62,13 @@ $(DPCPP_TBB_WRAPPER): libsampler-dpcp-tbb.so pybind_wrapper.cpp
 		$(TORCH_LDFLAGS) $(TORCH_LIBS)
 
 libsampler-dpcp-cud.so: sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
-	$(DPCPPCUDA) $(CXXFLAGS) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Wl,-rpath=$(DPCPPCUDA_INSTALL_ROOT)/lib -L$(DPCPPCUDA_INSTALL_ROOT)/lib -lsycl -Wl,-rpath=$(CUDA_PATH)/extras/CUPTI/lib64 -lur_loader -ffast-math -march=native -shared -ldl -fPIC -lz -o $@ $^
+	$(DPCPPCUDA) $(CXXFLAGS) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 \
+		-fsycl -fsycl-targets=nvptx64-nvidia-cuda \
+		-Xsycl-target-backend=nvptx64-nvidia-cuda --offload-arch=$(CUDA_DEV_TARGET) \
+		-Wl,-rpath=$(DPCPPCUDA_INSTALL_ROOT)/lib -L$(DPCPPCUDA_INSTALL_ROOT)/lib \
+		-lsycl -Wl,-rpath=$(CUDA_PATH)/extras/CUPTI/lib64 -lur_loader \
+		-ffast-math -march=native -shared -ldl -fPIC -lz \
+		-o $@ $^
 
 $(DPCPP_CUDA_WRAPPER): libsampler-dpcp-cud.so pybind_wrapper.cpp
 	$(CXX) $(CXXFLAGS) -O3 -Wall -Werror -shared -std=c++17 -fPIC \
@@ -142,7 +148,13 @@ sycl_test_dpcpp_hip: sycl_test.cpp sycl_sampler.cpp ../common/matrix.cpp ../comm
 	$(DPCPPHIP) $(IMPLEMENTATION_FLAGS) -std=c++17 -fsycl -fsycl-targets=amdgcn-amd-amdhsa,spir64_x86_64 -Xsycl-target-backend --offload-arch=$(HIP_DEV_TARGET) $(CXXFLAGS) -Wl,-rpath=$(DPCPPHIP_INSTALL_ROOT)/lib -L$(DPCPPHIP_INSTALL_ROOT)/lib -lsycl -o $@ $^
 
 sycl_test_dpcpp_cuda: sycl_test.cpp sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
-	$(DPCPPCUDA) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 -fsycl -fsycl-targets=nvptx64-nvidia-cuda,spir64_x86_64 $(CXXFLAGS) -Wl,-rpath=$(DPCPPCUDA_INSTALL_ROOT)/lib -L$(DPCPPCUDA_INSTALL_ROOT)/lib -lsycl -Wl,-rpath=$(CUDA_PATH)/extras/CUPTI/lib64 -lur_loader -lz -o $@ $^
+	$(DPCPPCUDA) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 \
+		-fsycl -fsycl-targets=nvptx64-nvidia-cuda,spir64_x86_64 \
+		-Xsycl-target-backend=nvptx64-nvidia-cuda --offload-arch=$(CUDA_DEV_TARGET) \
+		$(CXXFLAGS) \
+		-Wl,-rpath=$(DPCPPCUDA_INSTALL_ROOT)/lib -L$(DPCPPCUDA_INSTALL_ROOT)/lib \
+		-lsycl -Wl,-rpath=$(CUDA_PATH)/extras/CUPTI/lib64 -lur_loader -lz \
+		-o $@ $^
 
 # AdaptiveCpp
 sycl_test_acpp: sycl_test.cpp sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
