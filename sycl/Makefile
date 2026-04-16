@@ -12,6 +12,7 @@ DPCPP_XPU_WRAPPER   := dpcp/sycl_wrapper-xpu$(WRAPPER_NAME)
 .PHONY: activate_dpcpp_tbb activate_dpcpp_cuda activate_dpcpp_hip activate_dpcpp_xpu
 
 ACPP_LIB_PATH:=$(shell echo $(ADAPTIVECPP_INSTALL_ROOT)/lib)
+DPCPP_HIP_LIBSPIRV_BC := $(shell find $(DPCPPHIP_INSTALL_ROOT) -type f -name 'libspirv*.bc' 2>/dev/null | head -n 1)
 IMPLEMENTATION_FLAGS:=-DSYCL_BUILD=1 -DWRAPPER_BUILD=1
 all: create_binary_directories acpp/sycl_wrapper$(WRAPPER_NAME)
 
@@ -62,7 +63,7 @@ $(DPCPP_TBB_WRAPPER): libsampler-dpcp-tbb.so pybind_wrapper.cpp
 		$(TORCH_LDFLAGS) $(TORCH_LIBS)
 
 libsampler-dpcp-cud.so: sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
-	$(DPCPPCUDA) $(CXXFLAGS) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 \
+	$(DPCPPCUDA) $(CXXFLAGS) $(IMPLEMENTATION_FLAGS) -DGPU_SELECTOR=1 -O3 -std=c++17 \
 		-fsycl -fsycl-targets=nvptx64-nvidia-cuda \
 		-Xsycl-target-backend=nvptx64-nvidia-cuda --offload-arch=$(CUDA_DEV_TARGET) \
 		-Wl,-rpath=$(DPCPPCUDA_INSTALL_ROOT)/lib -L$(DPCPPCUDA_INSTALL_ROOT)/lib \
@@ -82,7 +83,14 @@ $(DPCPP_CUDA_WRAPPER): libsampler-dpcp-cud.so pybind_wrapper.cpp
 		$(TORCH_LDFLAGS) $(TORCH_LIBS)
 
 libsampler-dpcp-hip.so: sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
-	$(DPCPPHIP) $(CXXFLAGS) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 -fsycl -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=$(HIP_DEV_TARGET) -Wl,-rpath=$(DPCPPHIP_INSTALL_ROOT)/lib -L$(DPCPPHIP_INSTALL_ROOT)/lib -lsycl -lur_loader -ffast-math -march=native -shared -ldl -fPIC -lz -o $@ $^
+	@test -n "$(DPCPP_HIP_LIBSPIRV_BC)" || (echo "Could not locate libspirv*.bc under $(DPCPPHIP_INSTALL_ROOT)" >&2; exit 1)
+	$(DPCPPHIP) $(CXXFLAGS) $(IMPLEMENTATION_FLAGS)  -DGPU_SELECTOR=1 -O3 -std=c++17 \
+		-fsycl -fsycl-targets=amdgcn-amd-amdhsa \
+		-Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=$(HIP_DEV_TARGET) \
+		-fsycl-libspirv-path=$(DPCPP_HIP_LIBSPIRV_BC) \
+		-Wl,-rpath=$(DPCPPHIP_INSTALL_ROOT)/lib -L$(DPCPPHIP_INSTALL_ROOT)/lib \
+		-lsycl -lur_loader -ffast-math -march=native -shared -ldl -fPIC -lz \
+		-o $@ $^
 
 $(DPCPP_HIP_WRAPPER): libsampler-dpcp-hip.so pybind_wrapper.cpp
 	$(CXX) $(CXXFLAGS) -O3 -Wall -Werror -shared -std=c++17 -fPIC \
@@ -145,7 +153,14 @@ sycl_test_usy: sycl_test.cpp sycl_sampler.cpp ../common/matrix.cpp ../common/uti
 
 # DPC++
 sycl_test_dpcpp_hip: sycl_test.cpp sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
-	$(DPCPPHIP) $(IMPLEMENTATION_FLAGS) -std=c++17 -fsycl -fsycl-targets=amdgcn-amd-amdhsa,spir64_x86_64 -Xsycl-target-backend --offload-arch=$(HIP_DEV_TARGET) $(CXXFLAGS) -Wl,-rpath=$(DPCPPHIP_INSTALL_ROOT)/lib -L$(DPCPPHIP_INSTALL_ROOT)/lib -lsycl -o $@ $^
+	@test -n "$(DPCPP_HIP_LIBSPIRV_BC)" || (echo "Could not locate libspirv*.bc under $(DPCPPHIP_INSTALL_ROOT)" >&2; exit 1)
+	$(DPCPPHIP) $(IMPLEMENTATION_FLAGS) -std=c++17 \
+		-fsycl -fsycl-targets=amdgcn-amd-amdhsa,spir64_x86_64 \
+		-Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=$(HIP_DEV_TARGET) \
+		-fsycl-libspirv-path=$(DPCPP_HIP_LIBSPIRV_BC) \
+		$(CXXFLAGS) \
+		-Wl,-rpath=$(DPCPPHIP_INSTALL_ROOT)/lib -L$(DPCPPHIP_INSTALL_ROOT)/lib \
+		-lsycl -o $@ $^
 
 sycl_test_dpcpp_cuda: sycl_test.cpp sycl_sampler.cpp ../common/matrix.cpp ../common/utils.cpp ../cpp/cpp_sampler.cpp
 	$(DPCPPCUDA) $(IMPLEMENTATION_FLAGS) -O3 -std=c++17 \

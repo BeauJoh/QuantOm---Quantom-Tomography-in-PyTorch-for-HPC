@@ -107,22 +107,29 @@ sycl_sampler::sycl_sampler(std::string internal_timing_filename){
     mark_for_recording("forward_single_sample");
     mark_for_recording("pybind_wrapping_result");
   }
+    auto all_devices = sycl::device::get_devices();
+  printf("SYCL sees %zu total device(s)\n", all_devices.size());
+  for (size_t i = 0; i < all_devices.size(); i++) {
+    const auto &dev = all_devices[i];
+    printf(
+      "  [%zu] %s | gpu=%d cpu=%d accel=%d\n",
+      i,
+      dev.get_info<sycl::info::device::name>().c_str(),
+      dev.is_gpu() ? 1 : 0,
+      dev.is_cpu() ? 1 : 0,
+      dev.is_accelerator() ? 1 : 0
+    );
+  }
+
+  auto gpu_devices = sycl::device::get_devices(sycl::info::device_type::gpu);
+  printf("SYCL sees %zu GPU device(s)\n", gpu_devices.size());
   ref_sampler = cpp_sampler();
-  /*
-#if defined(DPCPP_NATIVE_CPU)
-  q = std::make_shared<sycl::queue>(sycl::queue(sycl::default_selector_v));
-#elif defined(CPU_SELECTOR)
+#if defined(CPU_SELECTOR)
   q = std::make_shared<sycl::queue>(sycl::queue(sycl::cpu_selector_v));
 #elif defined(GPU_SELECTOR)
   q = std::make_shared<sycl::queue>(sycl::queue(sycl::gpu_selector_v));
 #else
   q = std::make_shared<sycl::queue>(sycl::queue(sycl::default_selector_v));
-#endif
-  */
-  #if defined(CPU_SELECTOR)
-  q = std::make_shared<sycl::queue>(sycl::queue(sycl::cpu_selector{}));
-#else
-  q = std::make_shared<sycl::queue>(sycl::queue(sycl::default_selector{}));
 #endif
   q_ptr = static_cast<void*>(&q);
   printf("Running on %s\n",q->get_device().get_info<sycl::info::device::name>().c_str());

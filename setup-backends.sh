@@ -56,10 +56,13 @@ load_module_if_needed() {
   fi
 }
 
-TOP_LEVEL="${TOP_LEVEL:-$(pwd)}"
+# Repo root = directory containing this script
+THIS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+TOP_LEVEL="${TOP_LEVEL:-$THIS_DIR}"
 export TOP_LEVEL
 
-# Actual repo layout root for installed implementations
+# Single canonical install root:
+#   $REPO/sycl/sycl-implementations/<host>
 SYCL_ROOT="${SYCL_ROOT:-$TOP_LEVEL/sycl}"
 IMPL_BASE="${IMPL_BASE:-$SYCL_ROOT/sycl-implementations}"
 
@@ -87,14 +90,12 @@ export SOURCE_LLVM_INSTALL_ROOT="${SOURCE_LLVM_INSTALL_ROOT:-$IMPL_BASE/$HOST/ll
 export DPCPPCPU_INSTALL_ROOT="${DPCPPCPU_INSTALL_ROOT:-$IMPL_BASE/$HOST/dpc++-cpu}"
 export DPCPPCPU="${DPCPPCPU:-$DPCPPCPU_INSTALL_ROOT/bin/clang++}"
 
-# Optional install roots used elsewhere
 export DPCPPCUDA_INSTALL_ROOT="${DPCPPCUDA_INSTALL_ROOT:-$IMPL_BASE/$HOST/dpc++-cuda}"
 export DPCPPHIP_INSTALL_ROOT="${DPCPPHIP_INSTALL_ROOT:-$IMPL_BASE/$HOST/dpc++-hip}"
 export ADAPTIVECPP_INSTALL_ROOT="${ADAPTIVECPP_INSTALL_ROOT:-$IMPL_BASE/$HOST/adaptivecpp}"
 export IRIS_INSTALL_ROOT="${IRIS_INSTALL_ROOT:-$IMPL_BASE/$HOST/iris}"
 export UNISYCL_INSTALL_ROOT="${UNISYCL_INSTALL_ROOT:-$IMPL_BASE/$HOST/unisycl}"
 
-# Dedicated CUDA root for DPC++ CUDA builds
 export DPCPP_CUDA_PATH="${DPCPP_CUDA_PATH:-}"
 
 case "$HOST" in
@@ -281,3 +282,15 @@ export SOURCE_LLVM_CLANG="$SOURCE_LLVM_INSTALL_ROOT/bin/clang"
 export SOURCE_LLVM_CLANGXX="$SOURCE_LLVM_INSTALL_ROOT/bin/clang++"
 export SOURCE_LLVM_LD="$SOURCE_LLVM_INSTALL_ROOT/bin/ld.lld"
 
+# DPC++ runtime libraries
+if [[ "${BACKENDS:-}" == *"openmp"* ]]; then
+  append_ld_library_path "$DPCPPCPU_INSTALL_ROOT/lib"
+fi
+
+if [[ "${BACKENDS:-}" == *"cuda"* ]]; then
+  append_ld_library_path "$DPCPPCUDA_INSTALL_ROOT/lib"
+fi
+
+if [[ "${BACKENDS:-}" == *"hip"* ]]; then
+  append_ld_library_path "$DPCPPHIP_INSTALL_ROOT/lib"
+fi

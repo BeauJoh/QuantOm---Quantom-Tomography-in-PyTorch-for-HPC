@@ -87,14 +87,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 # shellcheck disable=SC1091
-source ../setup-backends.sh
+source "$SCRIPT_DIR/../setup-backends.sh"
 # shellcheck disable=SC1091
-source ../utils.sh
+source "$SCRIPT_DIR/../utils.sh"
 
-TOP_LEVEL="${TOP_LEVEL:-${PWD:-$(pwd)}}"
+TOP_LEVEL="${TOP_LEVEL:-$(cd -- "$SCRIPT_DIR/.." && pwd)}"
 HOST="${HOST:-$(hostname -s)}"
-IMPL_DIR="${IMPL_DIR:-$TOP_LEVEL/sycl-implementations/$HOST}"
-SOURCES_DIR="${SOURCES_DIR:-$TOP_LEVEL/sycl-implementations/sources}"
+IMPL_DIR="${IMPL_DIR:-$SCRIPT_DIR/sycl-implementations/$HOST}"
+SOURCES_DIR="${SOURCES_DIR:-$SCRIPT_DIR/sycl-implementations/sources}"
 IRIS_INSTALL_ROOT="${IRIS_INSTALL_ROOT:-$IMPL_DIR/iris}"
 UNISYCL_INSTALL_ROOT="${UNISYCL_INSTALL_ROOT:-$IMPL_DIR/unisycl}"
 
@@ -278,8 +278,8 @@ install_source_llvm() {
   fi
 
   experiment "Building and installing source LLVM"
-  cd "$TOP_LEVEL"
-  $SCRIPT_DIR/install-llvm.sh
+  cd "$SYCL_ROOT"
+  "$SCRIPT_DIR/install-llvm.sh"
 }
 
 install_tbb_if_missing() {
@@ -350,11 +350,13 @@ install_dpcpp() {
   fi
 
   experiment "Building and installing DPC++"
-  cd "$TOP_LEVEL"
+  cd "$SYCL_ROOT"
 
   [[ -x "$SOURCE_LLVM_CLANG" ]] || { error "DPC++ requires source-built LLVM clang: $SOURCE_LLVM_CLANG"; exit 1; }
   [[ -x "$SOURCE_LLVM_CLANGXX" ]] || { error "DPC++ requires source-built LLVM clang++: $SOURCE_LLVM_CLANGXX"; exit 1; }
-  [[ -f "$SOURCE_LLVM_DIR/LLVMConfig.cmake" ]] || { error "DPC++ requires source-built LLVMConfig.cmake"; exit 1; }
+  [[ -x "$SOURCE_LLVM_LD" ]] || { error "DPC++ requires source-built LLVM lld: $SOURCE_LLVM_LD"; exit 1; }
+  [[ -f "$SOURCE_LLVM_DIR/LLVMConfig.cmake" ]] || { error "DPC++ requires source-built LLVMConfig.cmake: $SOURCE_LLVM_DIR/LLVMConfig.cmake"; exit 1; }
+  [[ -f "$SOURCE_CLANG_DIR/ClangConfig.cmake" ]] || { error "DPC++ requires source-built ClangConfig.cmake: $SOURCE_CLANG_DIR/ClangConfig.cmake"; exit 1; }
   [[ -f "$IMPL_DIR/tbb/lib/cmake/TBB/TBBConfig.cmake" ]] || { error "DPC++ requires oneTBB at $IMPL_DIR/tbb"; exit 1; }
 
   export CC="$SOURCE_LLVM_CLANG"
@@ -364,6 +366,13 @@ install_dpcpp() {
   export CLANG_DIR="$SOURCE_CLANG_DIR"
   export CLANG="$SOURCE_LLVM_CLANG"
   export CLANGXX="$SOURCE_LLVM_CLANGXX"
+
+  info "Using source LLVM for DPC++"
+  info "CC=$SOURCE_LLVM_CLANG"
+  info "CXX=$SOURCE_LLVM_CLANGXX"
+  info "LD=$SOURCE_LLVM_LD"
+  info "LLVM_DIR=$SOURCE_LLVM_DIR"
+  info "CLANG_DIR=$SOURCE_CLANG_DIR"
 
   if [[ ! -d "$SOURCES_DIR/dpc++-src" ]]; then
     cd "$SOURCES_DIR"
@@ -397,6 +406,7 @@ install_dpcpp() {
     mv build/install "$IMPL_DIR/dpc++-cpu"
     rm -rf build
   fi
+
   if [[ "${BACKENDS:-}" == *"cuda"* ]]; then
     local dpcpp_cuda_root="${DPCPP_CUDA_PATH:-${CUDA_PATH:-}}"
     [[ -n "$dpcpp_cuda_root" ]] || {
@@ -431,6 +441,7 @@ install_dpcpp() {
       ${dpcpp_cupti_library:+--cmake-opt=-DCUDAToolkit_CUPTI_LIBRARY=$dpcpp_cupti_library}
 
     python3 buildbot/compile.py -j "$local_jobs"
+    rm -rf "$IMPL_DIR/dpc++-cuda"
     mv build/install "$IMPL_DIR/dpc++-cuda"
     rm -rf build
   fi
@@ -444,8 +455,10 @@ install_dpcpp() {
       --hip \
       --cmake-opt="-DSYCL_BUILD_PI_HIP_ROCM_DIR=$ROCM_PATH" \
       --cmake-opt="-DSYCL_ENABLE_TBB=ON" \
-      --cmake-opt="-DTBB_DIR=$IMPL_DIR/tbb/lib/cmake/TBB"
+      --cmake-opt="-DTBB_DIR=$IMPL_DIR/tbb/lib/cmake/TBB" \
+      --cmake-opt="-DLIBCLC_TARGETS_TO_BUILD=amdgcn-amd-amdhsa-llvm"
     python3 buildbot/compile.py -j "$local_jobs"
+    rm -rf "$IMPL_DIR/dpc++-hip"
     mv build/install "$IMPL_DIR/dpc++-hip"
     rm -rf build
   fi
@@ -459,6 +472,7 @@ install_dpcpp() {
       --cmake-opt="-DSYCL_ENABLE_TBB=ON" \
       --cmake-opt="-DTBB_DIR=$IMPL_DIR/tbb/lib/cmake/TBB"
     python3 buildbot/compile.py -j "$local_jobs"
+    rm -rf "$IMPL_DIR/dpc++-$BACKENDS"
     mv build/install "$IMPL_DIR/dpc++-$BACKENDS"
     rm -rf build
   fi
@@ -483,7 +497,7 @@ install_acpp() {
   }
 
   experiment "Building and installing AdaptiveCpp"
-  cd "$TOP_LEVEL"
+  cd "$SYCL_ROOT"
 
   if [[ ! -d "$SOURCES_DIR/adaptivecpp-src" ]]; then
     cd "$SOURCES_DIR"

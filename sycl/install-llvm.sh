@@ -4,14 +4,14 @@ set -euo pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # shellcheck disable=SC1091
-source "../setup-backends.sh"
+source "$SCRIPT_DIR/../setup-backends.sh"
 # shellcheck disable=SC1091
-source "../utils.sh"
+source "$SCRIPT_DIR/../utils.sh"
 
-TOP_LEVEL="${TOP_LEVEL:-${PWD:-$(pwd)}}"
+TOP_LEVEL="${TOP_LEVEL:-$(cd -- "$SCRIPT_DIR/.." && pwd)}"
 HOST="${HOST:-$(hostname -s)}"
-IMPL_DIR="${IMPL_DIR:-$TOP_LEVEL/sycl-implementations/$HOST}"
-SOURCES_DIR="${SOURCES_DIR:-$TOP_LEVEL/sycl-implementations/sources}"
+IMPL_DIR="${IMPL_DIR:-$SCRIPT_DIR/sycl-implementations/$HOST}"
+SOURCES_DIR="${SOURCES_DIR:-$SCRIPT_DIR/sycl-implementations/sources}"
 SOURCE_LLVM_VERSION="${SOURCE_LLVM_VERSION:-19.0.1}"
 SOURCE_LLVM_MAJOR="${SOURCE_LLVM_MAJOR:-19}"
 INSTALL_DIR="${INSTALL_DIR:-$IMPL_DIR/llvm-${SOURCE_LLVM_VERSION}}"
@@ -36,13 +36,8 @@ LLVM_TARBALL_GZ="${LLVM_SRC_DIR}.tar.gz"
 download_with_fallbacks() {
   local version="$1"
 
-  # 1) Try the old releases site layout
   local url1="https://releases.llvm.org/${version}/llvm-project-${version}.src.tar.xz"
-
-  # 2) Try GitHub codeload tag archive
   local url2="https://codeload.github.com/llvm/llvm-project/tar.gz/refs/tags/llvmorg-${version}"
-
-  # 3) Last resort: shallow clone release branch
   local branch="release/${SOURCE_LLVM_MAJOR}.x"
 
   if wget -O "$LLVM_TARBALL_XZ" "$url1"; then
@@ -58,7 +53,6 @@ download_with_fallbacks() {
     tar -xvf "$LLVM_TARBALL_GZ"
     rm -f "$LLVM_TARBALL_GZ"
 
-    # codeload expands to llvm-project-llvmorg-<version>
     local extracted_dir="llvm-project-llvmorg-${version}"
     if [[ -d "$extracted_dir" ]]; then
       mv "$extracted_dir" "$LLVM_SRC_DIR"
@@ -149,4 +143,3 @@ info "ClangConfig=$INSTALL_DIR/lib/cmake/clang/ClangConfig.cmake"
 info "libLLVM=$INSTALL_DIR/lib/libLLVM.so"
 
 rm -rf build
-

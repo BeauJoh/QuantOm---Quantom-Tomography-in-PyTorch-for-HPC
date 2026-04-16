@@ -41,6 +41,7 @@ with_dpcpp_cuda_runtime() {
 }
 
 with_dpcpp_hip_runtime() {
+  SYCL_DEVICE_FILTER=hip \
   ONEAPI_DEVICE_SELECTOR='hip:gpu' \
   LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$DPCPPHIP_INSTALL_ROOT/lib" \
   $PIXIRUN python "$@"
